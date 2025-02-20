@@ -1,0 +1,88 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.1.0'
+	id 'io.spring.dependency-management' version '1.1.0'
+	id "org.sonarqube" version "3.0"
+}
+
+group = 'com.signify'
+version = '0.0.1'
+sourceCompatibility = '17'
+
+repositories {
+	mavenCentral()
+	maven { url 'https://download.oracle.com/maven' }
+}
+
+dependencies {
+    implementation "org.springframework.boot:spring-boot-starter-web"
+    implementation "org.springframework.boot:spring-boot-starter"
+    implementation "org.springframework.boot:spring-boot-starter-data-jpa:3.1.4"
+    implementation "org.flywaydb:flyway-core"
+    runtimeOnly "com.h2database:h2"
+    testImplementation "org.springframework.boot:spring-boot-starter-test"
+
+    // Mockito core and JUnit integration
+    testImplementation "org.mockito:mockito-core:5.4.0"
+    testImplementation "org.mockito:mockito-junit-jupiter:5.4.0"
+
+    // Ensure correct JUnit Platform version
+    testImplementation "org.junit.platform:junit-platform-launcher:1.9.3"
+
+    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0"
+    
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+
+task createDirs {
+	def libsFolder = new File(project.buildDir.path+'/libs', 'libs' )
+	def configFolder = new File(project.buildDir.path+'/libs', 'config')
+	def logFolder = new File(project.buildDir.path+'/libs', 'log')
+	
+	if(!logFolder.exists()){
+		logFolder.mkdirs()
+	}
+	
+	if(libsFolder.exists()){
+		libsFolder.delete()
+	}
+	if(configFolder.exists()){
+		configFolder.delete()
+	}
+	 
+	libsFolder.mkdirs()
+	configFolder.mkdirs()
+}
+
+task copyDependencies(type: Copy) {
+	from configurations.runtimeClasspath
+    into project.buildDir.path+"/libs/libs"
+}
+
+task copyConfig(type: Copy){
+	from "config"
+	into project.buildDir.path+"/libs/config"
+}
+
+task createJar(type: Jar){
+	dependsOn 'createDirs', 'copyDependencies', 'copyConfig'
+	manifest {
+		def manifestClassPath = configurations.runtimeClasspath.collect{"libs/" + it.getName()}.join(' ')
+        attributes 'Implementation-Title': 'Alexareviews',  
+        		   'Implementation-Version': version,
+        	       'Main-Class': 'com.signify.alexareviews.AlexareviewsApplication',
+        	       'Class-Path': manifestClassPath
+    }
+    from { (configurations.runtimeClasspath - configurations.runtimeClasspath).collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/*.MF'
+}
+
+task buildAll(type: Zip){
+	dependsOn 'createJar'
+	from 'build/libs'
+}
