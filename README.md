@@ -66,9 +66,16 @@ gradle flywayMigrate
 ```
 
 ## Running Tests  
-Execute unit tests using:  
+### Run Unit Tests  
+Execute all unit tests using:  
 ```bash
 gradle test
+```
+
+### Run Integration Tests  
+Execute all integration tests using:  
+```bash
+gradle integrationTest
 ```
 
 ## Logging and Monitoring  
