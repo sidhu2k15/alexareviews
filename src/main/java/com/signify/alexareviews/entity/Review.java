@@ -35,6 +35,22 @@ public class Review {
 	private String productName;
 	@JsonProperty("reviewed_date")
 	private LocalDate reviewedDate;
+	public Review() {
+	    // Default constructor required by Jackson
+	}
+
+	public Review(UUID id, String review, String author, String reviewSource, int rating, String title,
+			String productName, LocalDate reviewedDate) {
+		super();
+		this.id = id;
+		this.review = review;
+		this.author = author;
+		this.reviewSource = reviewSource;
+		this.rating = rating;
+		this.title = title;
+		this.productName = productName;
+		this.reviewedDate = reviewedDate;
+	}
 
 	public UUID getId() {
 		return id;

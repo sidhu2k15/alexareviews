@@ -7,11 +7,11 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,14 +23,13 @@ import com.signify.alexareviews.repository.ReviewRepository;
 @Service
 public class ReviewService {
 
-	@Autowired
-	ObjectMapper objectMapper;
-
 	private static final Logger logger = LoggerFactory.getLogger(ReviewService.class);
 	private final ReviewRepository reviewRepository;
+	private final ObjectMapper objectMapper;
 
-	public ReviewService(ReviewRepository reviewRepository) {
+	public ReviewService(ReviewRepository reviewRepository, ObjectMapper objectMapper) {
 		this.reviewRepository = reviewRepository;
+		this.objectMapper = objectMapper;
 	}
 
 	public void importReviewsFromFile(String filePath) throws IOException {
@@ -63,6 +62,7 @@ public class ReviewService {
 	}
 
 	public Review saveReview(Review review) {
+		Objects.requireNonNull(review, "Review cannot be null");
 		logger.info("Saving review: {}", review);
 		Review savedReview = reviewRepository.save(review);
 		logger.info("Review saved successfully with ID: {}", savedReview.getId());
@@ -74,35 +74,55 @@ public class ReviewService {
 				endDate, storeType, rating);
 
 		if (startDate != null && endDate != null) {
-			return reviewRepository.findByReviewedDateBetween(startDate, endDate).map(reviews -> {
-				logger.info("Successfully fetched {} reviews for date range {} to {}", reviews.size(), startDate,
-						endDate);
-				return new Response<>(true, "Success", "Fetch reviews with start and end date as filter succeeded",
-						reviews);
-			}).orElseGet(() -> {
-				logger.warn("Failed to fetch reviews with start and end date as filter");
-				return new Response<>(false, ResponseCode.FAILED.toString(),
-						"Failed to fetch reviews with start and end date as filter");
-			});
-		} else if (storeType != null) {
-			return reviewRepository.findByReviewSource(storeType).map(reviews -> {
-				logger.info("Successfully fetched {} reviews for storeType: {}", reviews.size(), storeType);
-				return new Response<>(true, "Success", "Fetch reviews with storeType as filter succeeded", reviews);
-			}).orElseGet(() -> {
-				logger.warn("Failed to fetch reviews with storeType: {}", storeType);
-				return new Response<>(false, ResponseCode.FAILED.toString(),
-						"Failed to fetch reviews with storeType as parameter");
-			});
-		} else if (rating != null) {
-			return reviewRepository.findByRating(rating).map(reviews -> {
-				logger.info("Successfully fetched {} reviews with rating: {}", reviews.size(), rating);
-				return new Response<>(true, "Success", "Fetch reviews with rating as filter succeeded", reviews);
-			}).orElseGet(() -> {
-				logger.warn("Failed to fetch reviews with rating: {}", rating);
-				return new Response<>(false, ResponseCode.FAILED.toString(),
-						"Failed to fetch reviews with rating as parameter");
-			});
-		} else {
+			return reviewRepository.findByReviewedDateBetween(startDate, endDate).filter(reviews -> !reviews.isEmpty()) // Ensures
+																														// we
+																														// return
+																														// only
+																														// non-empty
+																														// lists
+					.map(reviews -> {
+						logger.info("Successfully fetched {} reviews for date range {} to {}", reviews.size(),
+								startDate, endDate);
+						return new Response<>(true, "Success",
+								"Fetch reviews with start and end date as filter succeeded", reviews);
+					}).orElseGet(() -> {
+						logger.warn("Failed to fetch reviews with start and end date as filter");
+						return new Response<>(false, ResponseCode.FAILED.toString(),
+								"Failed to fetch reviews with start and end date as filter");
+					});
+		}
+
+		else if (storeType != null) {
+			return reviewRepository.findByReviewSource(storeType).filter(reviews -> !reviews.isEmpty()) // Ensure only
+																										// non-empty
+																										// lists return
+																										// success
+					.map(reviews -> {
+						logger.info("Successfully fetched {} reviews for storeType: {}", reviews.size(), storeType);
+						return new Response<>(true, "Success", "Fetch reviews with storeType as filter succeeded",
+								reviews);
+					}).orElseGet(() -> {
+						logger.warn("Failed to fetch reviews with storeType: {}", storeType);
+						return new Response<>(false, ResponseCode.FAILED.toString(),
+								"Failed to fetch reviews with storeType as parameter");
+					});
+		}
+
+		else if (rating != null) {
+			return reviewRepository.findByRating(rating).filter(ratings -> !ratings.isEmpty()) // Ensure only non-empty
+																								// lists return success
+					.map(ratings -> {
+						logger.info("Successfully fetched {} reviews with rating: {}", ratings.size(), rating);
+						return new Response<>(true, "Success", "Fetch reviews with rating as filter succeeded",
+								ratings);
+					}).orElseGet(() -> {
+						logger.warn("Failed to fetch reviews with rating: {}", rating);
+						return new Response<>(false, ResponseCode.FAILED.toString(),
+								"Failed to fetch reviews with rating as parameter");
+					});
+		}
+
+		else {
 			List<Review> allReviews = reviewRepository.findAll();
 			logger.info("Fetched all reviews, total count: {}", allReviews.size());
 			return new Response<>(true, "Success", "Fetching all reviews succeeded", allReviews);

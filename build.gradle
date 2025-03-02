@@ -30,48 +30,61 @@ dependencies {
     testImplementation "org.junit.platform:junit-platform-launcher:1.9.3"
 
     implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0"
-    
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+    filter {
+        excludeTestsMatching "*IT" // Exclude integration tests from the default test task
+    }
 }
 
+tasks.register('integrationTest', Test) {
+    description = 'Runs integration tests.'
+    group = 'verification'
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching "*IT" // Run only integration tests
+    }
+    shouldRunAfter test
+}
+
+check.dependsOn integrationTest
 
 task createDirs {
-	def libsFolder = new File(project.buildDir.path+'/libs', 'libs' )
-	def configFolder = new File(project.buildDir.path+'/libs', 'config')
-	def logFolder = new File(project.buildDir.path+'/libs', 'log')
-	
-	if(!logFolder.exists()){
+	def libsFolder = new File(project.buildDir.path + '/libs', 'libs')
+	def configFolder = new File(project.buildDir.path + '/libs', 'config')
+	def logFolder = new File(project.buildDir.path + '/libs', 'log')
+
+	if (!logFolder.exists()) {
 		logFolder.mkdirs()
 	}
-	
-	if(libsFolder.exists()){
+
+	if (libsFolder.exists()) {
 		libsFolder.delete()
 	}
-	if(configFolder.exists()){
+	if (configFolder.exists()) {
 		configFolder.delete()
 	}
-	 
+
 	libsFolder.mkdirs()
 	configFolder.mkdirs()
 }
 
 task copyDependencies(type: Copy) {
 	from configurations.runtimeClasspath
-    into project.buildDir.path+"/libs/libs"
+    into project.buildDir.path + "/libs/libs"
 }
 
-task copyConfig(type: Copy){
+task copyConfig(type: Copy) {
 	from "config"
-	into project.buildDir.path+"/libs/config"
+	into project.buildDir.path + "/libs/config"
 }
 
-task createJar(type: Jar){
+task createJar(type: Jar) {
 	dependsOn 'createDirs', 'copyDependencies', 'copyConfig'
 	manifest {
-		def manifestClassPath = configurations.runtimeClasspath.collect{"libs/" + it.getName()}.join(' ')
+		def manifestClassPath = configurations.runtimeClasspath.collect { "libs/" + it.getName() }.join(' ')
         attributes 'Implementation-Title': 'Alexareviews',  
         		   'Implementation-Version': version,
         	       'Main-Class': 'com.signify.alexareviews.AlexareviewsApplication',
@@ -82,7 +95,7 @@ task createJar(type: Jar){
     exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/*.MF'
 }
 
-task buildAll(type: Zip){
-	dependsOn 'createJar'
+task buildAll(type: Zip) {
+	dependsOn  'test', 'integrationTest','createJar'
 	from 'build/libs'
 }
